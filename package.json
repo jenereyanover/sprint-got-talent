@@ -2,8 +2,5 @@
   "name": "sprints-got-talent",
   "version": "1.0.0",
   "private": true,
-  "description": "Got Talent themed sprint retro board with facilitator and performer routes",
-  "dependencies": {
-    "@netlify/blobs": "^8.1.0"
-  }
+  "description": "Got Talent themed sprint retro board with facilitator and performer routes, backed by Firebase Realtime Database"
 }

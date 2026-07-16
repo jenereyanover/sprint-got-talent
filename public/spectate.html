@@ -3,24 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sprint's Got Talent — Host</title>
+<title>Sprint's Got Talent — Audience</title>
 <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-
-<!-- Role gate -->
-<div class="gate" id="gate">
-  <div class="gate-card">
-    <h2>Host's entrance</h2>
-    <p>You're hosting tonight &#8212; you run the show: start each act, keep the act timer honest, and call the results. You don't perform or vote. Share the main site link with your performers; keep this /host link to yourself.</p>
-    <input type="text" id="gateName" maxlength="24" placeholder="Your name" aria-label="Your name">
-    <div class="gate-roles">
-      <button class="btn-gold" id="joinBtn">Take the mic</button>
-    </div>
-    <div class="gate-err" id="gateErr"></div>
-  </div>
-</div>
 
 <header>
   <div class="curtain" aria-hidden="true"></div>
@@ -32,7 +19,7 @@
   </div>
   <div class="sprint-line">
     Tonight's show:
-    <input id="sprintName" type="text" placeholder="Sprint 42 · Jul 2026" aria-label="Sprint name">
+    <input id="sprintName" type="text" placeholder="Sprint 42 · Jul 2026" aria-label="Sprint name" disabled>
   </div>
 </header>
 
@@ -47,28 +34,15 @@
 
 <div class="toolbar">
   <div class="chip" id="timerChip">Act timer <strong id="timerDisplay">1:00</strong></div>
-  <span id="facControls" style="display:contents">
-    <select class="btn-ghost" id="timerSel" aria-label="Act timer length">
-      <option value="1" selected>1 min</option>
-      <option value="5">5 min</option>
-      <option value="10">10 min</option>
-      <option value="15">15 min</option>
-      <option value="30">30 min</option>
-    </select>
-    <button class="btn-ghost" id="timerBtn">Start act timer</button>
-    <button class="btn-ghost" id="prevBtn">&#8592; Back</button>
-    <button class="btn-gold" id="nextBtn">Start the show &#8594;</button>
-    <button class="btn-ghost" id="clearBoardBtn">New season</button>
-  </span>
   <span class="chip hidden" id="progressChip"></span>
-  <div class="save-note" id="saveNote">Host view &#8212; performers join at the main site link. Updates instantly.</div>
+  <div class="save-note" id="saveNote">Audience view &#8212; you're watching the show live. Sit back and enjoy; nothing here is yours to touch.</div>
 </div>
 
 <!-- Setup: cast list -->
 <section class="stage-block" id="castBlock">
   <div class="panel">
     <h2>Tonight's cast</h2>
-    <p class="hint">Waiting backstage. When everyone's in, hit "Start the show".</p>
+    <p class="hint">Waiting backstage. The show begins when the host is ready.</p>
     <div class="cast" id="castList"></div>
   </div>
 </section>
@@ -77,26 +51,14 @@
   <div class="columns">
     <div class="col well" data-cat="well">
       <h2>Hits <small>what went well</small></h2>
-      <div class="composer">
-        <input type="text" aria-label="Add a card to what went well">
-        <button type="button">Add</button>
-      </div>
       <div class="cards"></div>
     </div>
     <div class="col flop" data-cat="flop">
       <h2>Flops <small>what didn't go well</small></h2>
-      <div class="composer">
-        <input type="text" aria-label="Add a card to what didn't go well">
-        <button type="button">Add</button>
-      </div>
       <div class="cards"></div>
     </div>
     <div class="col idea" data-cat="idea">
       <h2>New acts <small>ideas to try</small></h2>
-      <div class="composer">
-        <input type="text" aria-label="Add a card to ideas to try">
-        <button type="button">Add</button>
-      </div>
       <div class="cards"></div>
     </div>
   </div>
@@ -113,18 +75,17 @@
 <section class="stage-block hidden" id="actionsBlock">
   <div class="panel">
     <h2>Results show — action items</h2>
-    <p class="hint">Turn the finalists into commitments. Every action needs an owner.</p>
+    <p class="hint">The commitments coming out of tonight's show.</p>
     <table class="actions-table" aria-label="Action items">
-      <thead><tr><th style="width:55%">Action</th><th style="width:22%">Owner</th><th style="width:18%">Due</th><th></th></tr></thead>
+      <thead><tr><th style="width:56%">Action</th><th style="width:24%">Owner</th><th style="width:20%">Due</th></tr></thead>
       <tbody id="actionsBody"></tbody>
     </table>
-    <button class="btn-gold add-row" id="addActionBtn">Add action item</button>
   </div>
 </section>
 
 <div class="toast" id="toast" role="status"></div>
 
-<script>window.SGT_ROLE = 'fac';</script>
+<script>window.SGT_ROLE = 'spec';</script>
 <script type="module" src="/app.js"></script>
 </body>
 </html>

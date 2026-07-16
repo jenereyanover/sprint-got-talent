@@ -1,14 +1,18 @@
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getDatabase, ref, onValue, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+import { firebaseConfig } from './firebase-config.js';
+
 (function(){
   'use strict';
 
   // ================= Constants =================
-  var ROLE = window.SGT_ROLE === 'fac' ? 'fac' : 'part';
+  var ROLE = window.SGT_ROLE === 'fac' ? 'fac'
+           : window.SGT_ROLE === 'spec' ? 'spec' : 'part';
+  var SPECTATE = ROLE === 'spec';   // audience view: read-only, never signs in, never writes
   var ROOM = (new URLSearchParams(location.search).get('room') || 'default')
     .replace(/[^a-zA-Z0-9_-]/g,'').slice(0,40) || 'default';
-  var API = '/api/state?room=' + encodeURIComponent(ROOM);
   var ME_KEY = 'sgt-me-' + ROOM + '-' + ROLE;
   var TOP_VOTES = 3;
-  var POLL_MS = 3500;
   var PHASES = [
     { name:'Setup',
       hint:'Performers, sign in from your own device. Host starts the show when the cast is complete.',
@@ -37,79 +41,111 @@
   var state = blankState();
   var me = null;               // { name, role }
   var memoryOnly = false;
-  var lastSnapshot = '';
+  var lastSnapshot = null;      // distinct from '' so the first (possibly empty) snapshot always applies
+
+  // ================= Firebase =================
+  // The whole board lives as one JSON string at rooms/<room>. Reads come through a
+  // realtime onValue listener (no polling); writes go through an atomic transaction.
+  var boardRef = null;
+  function configLooksReal(cfg){
+    return !!(cfg && cfg.databaseURL && cfg.databaseURL.indexOf('YOUR_') === -1
+              && cfg.apiKey && cfg.apiKey.indexOf('YOUR_') === -1);
+  }
+  try{
+    if(configLooksReal(firebaseConfig)){
+      var fbApp = initializeApp(firebaseConfig);
+      boardRef = ref(getDatabase(fbApp), 'rooms/' + ROOM);
+    } else {
+      memoryOnly = true;
+    }
+  }catch(e){ memoryOnly = true; }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
 
-  // ================= API storage =================
-  async function apiGet(){
-    try{
-      var r = await fetch(API, { cache:'no-store' });
-      if(!r.ok) throw new Error(r.status);
-      return await r.text(); // JSON string or 'null'
-    }catch(e){ return null; }
-  }
-  async function apiSet(json){
-    try{
-      var r = await fetch(API, { method:'POST', body:json,
-        headers:{ 'content-type':'application/json' } });
-      return r.ok;
-    }catch(e){ return false; }
+  // ================= Firebase storage =================
+  function ensureShape(s){
+    if(!s || typeof s !== 'object') s = blankState();
+    if(typeof s.phase !== 'number') s.phase = 0;
+    s.participants = s.participants || [];
+    s.cards = s.cards || [];
+    s.actions = s.actions || [];
+    return s;
   }
 
-  // Read latest, apply mutation, write back — reduces clobbering between judges.
-  var writing = false;
-  async function mutate(fn){
-    if(!memoryOnly){
-      var latest = await apiGet();
-      if(latest && latest !== 'null'){
-        try{ state = JSON.parse(latest); }catch(e){}
+  // Atomic read-modify-write on the shared board. Firebase runs the updater against
+  // the latest value and retries on conflict, so concurrent judges never clobber each
+  // other. Keep the updater pure (no side effects) — it may run more than once.
+  function mutate(fn){
+    if(SPECTATE) return Promise.resolve(false);   // spectators can never write to the board
+    if(memoryOnly){
+      fn(state);
+      render();
+      return Promise.resolve(true);
+    }
+    return runTransaction(boardRef, function(currentStr){
+      var s;
+      try{ s = currentStr ? JSON.parse(currentStr) : blankState(); }
+      catch(e){ s = blankState(); }
+      s = ensureShape(s);
+      fn(s);
+      return JSON.stringify(s);
+    }).then(function(){ return true; }, function(){ return false; });
+  }
+
+  // Apply a snapshot pushed live from Firebase.
+  function handleRemote(val){
+    var str = (val == null) ? '' : String(val);
+    if(str === lastSnapshot) return;             // no change (also skips the echo of our own write)
+    var ae = document.activeElement;             // don't yank a field out from under someone typing
+    if(ae && ae.tagName === 'INPUT' && (ae.closest('#actionsBody') || ae.closest('.composer'))) return;
+    lastSnapshot = str;
+    if(str){
+      try{ state = ensureShape(JSON.parse(str)); }catch(e){ return; }
+    } else {
+      state = blankState();
+    }
+    if(me){
+      if(!isInCast(me.name)){                     // board was reset since we joined
+        me = null;
+        try{ localStorage.removeItem(ME_KEY); }catch(e){}
+        openGate();
+      } else {
+        closeGate();
       }
     }
-    fn(state);
     render();
-    if(memoryOnly) return;
-    writing = true;
-    var json = JSON.stringify(state);
-    var ok = await apiSet(json);
-    writing = false;
-    if(ok) lastSnapshot = json;
   }
 
-  async function init(){
-    var v = await apiGet();
-    if(v === null){
+  function init(){
+    if(SPECTATE){
+      closeGate(); // audience never signs in
+    } else {
+      try{
+        var m = localStorage.getItem(ME_KEY);
+        if(m) me = JSON.parse(m);
+      }catch(e){}
+      if(me) closeGate(); // optimistic; handleRemote re-opens the gate if the board was reset
+    }
+
+    if(memoryOnly){
+      $('saveNote').textContent = SPECTATE
+        ? 'Firebase isn\u2019t configured \u2014 there\u2019s no live show to watch yet.'
+        : 'Firebase isn\u2019t configured \u2014 running in single-device demo mode. Add your project config to firebase-config.js for the live shared board.';
+      render();
+      return;
+    }
+
+    render(); // first paint before the initial snapshot lands
+    onValue(boardRef, function(snap){
+      handleRemote(snap.val());
+    }, function(){
+      // Permission denied / unreachable \u2014 fall back to local-only so the page still works.
       memoryOnly = true;
       $('saveNote').textContent =
-        'Backend unreachable \u2014 running in single-device demo mode. Deploy to Netlify for the live shared board.';
-    } else if(v !== 'null'){
-      try{ state = JSON.parse(v); lastSnapshot = v; }catch(e){}
-    }
-    try{
-      var m = localStorage.getItem(ME_KEY);
-      if(m) me = JSON.parse(m);
-    }catch(e){}
-    if(me && !isInCast(me.name)) me = null; // board was reset since last visit
-    if(me) closeGate();
-    render();
-    startPolling();
-  }
-
-  function startPolling(){
-    if(memoryOnly) return;
-    setInterval(async function(){
-      if(writing) return;
-      var v = await apiGet();
-      if(v && v !== 'null' && v !== lastSnapshot){
-        var ae = document.activeElement;
-        if(ae && ae.tagName === 'INPUT' && (ae.closest('#actionsBody') || ae.closest('.composer'))) return;
-        lastSnapshot = v;
-        try{ state = JSON.parse(v); }catch(e){ return; }
-        if(me && !isInCast(me.name)){ me = null; openGate(); }
-        render();
-      }
-    }, POLL_MS);
+        'Live board unreachable \u2014 running locally. Check your Firebase config and database rules.';
+      render();
+    });
   }
 
   function isInCast(name){
@@ -118,8 +154,8 @@
 
   // ================= Role gate =================
   var gate = $('gate');
-  function openGate(){ gate.classList.remove('hidden'); }
-  function closeGate(){ gate.classList.add('hidden'); }
+  function openGate(){ if(gate) gate.classList.remove('hidden'); }
+  function closeGate(){ if(gate) gate.classList.add('hidden'); }
 
   function join(){
     var name = $('gateName').value.trim();
@@ -138,8 +174,8 @@
       toast(ROLE==='fac' ? 'You\u2019re hosting tonight, ' + name + '.' : 'Break a leg, ' + name + '.');
     });
   }
-  $('joinBtn').addEventListener('click', join);
-  $('gateName').addEventListener('keydown', function(e){ if(e.key==='Enter') join(); });
+  if($('joinBtn')) $('joinBtn').addEventListener('click', join);
+  if($('gateName')) $('gateName').addEventListener('keydown', function(e){ if(e.key==='Enter') join(); });
 
   // ================= Toast & confetti =================
   var toastEl = $('toast'), toastTimer = null;
@@ -201,6 +237,16 @@
     return { golden:golden, voted:rest };
   }
 
+  // Reorder the main sections in place to match a desired top-to-bottom sequence.
+  // Only touches nodes that are actually out of place, so it won't disturb a field
+  // being edited once the order is already settled.
+  function orderSections(seq){
+    for(var i=1;i<seq.length;i++){
+      var prev = seq[i-1], node = seq[i];
+      if(prev.nextSibling !== node) prev.parentNode.insertBefore(node, prev.nextSibling);
+    }
+  }
+
   // ================= Rendering =================
   function render(){
     var ph = state.phase || 0;
@@ -208,8 +254,10 @@
 
     // Sprint name (don't clobber while typing)
     var sn = $('sprintName');
-    if(document.activeElement !== sn) sn.value = state.sprintName || '';
-    sn.disabled = !isFac();
+    if(sn){
+      if(document.activeElement !== sn) sn.value = state.sprintName || '';
+      sn.disabled = !isFac();
+    }
 
     // Phase banner
     $('phaseName').textContent = PHASES[ph].name;
@@ -223,7 +271,7 @@
     });
     $('youChip').innerHTML = joined
       ? (isFac() ? 'Hosting as <b>'+esc(me.name)+'</b>' : 'Performing as <b>'+esc(me.name)+'</b>')
-      : 'Not signed in';
+      : (SPECTATE ? 'Spectating · view only' : 'Not signed in');
 
     // Facilitator controls (host page only)
     if($('nextBtn')){
@@ -255,11 +303,22 @@
       pc.classList.add('hidden');
     }
 
+    // No act timer during the Results Show
+    if($('timerChip')) $('timerChip').classList.toggle('hidden', ph === 4);
+    if($('timerBtn')) $('timerBtn').classList.toggle('hidden', ph === 4);
+    if($('timerSel')) $('timerSel').classList.toggle('hidden', ph === 4);
+
     // Section visibility
     $('castBlock').classList.toggle('hidden', ph !== 0);
     $('boardMain').classList.toggle('hidden', ph === 0);
     $('finalsBlock').classList.toggle('hidden', ph < 3);
     $('actionsBlock').classList.toggle('hidden', ph !== 4);
+
+    // Act 4 (Results Show): action items up top, the acts board at the bottom.
+    // Every other phase keeps the acts board first. castBlock is the fixed anchor.
+    orderSections(ph === 4
+      ? [$('castBlock'), $('actionsBlock'), $('finalsBlock'), $('boardMain')]
+      : [$('castBlock'), $('boardMain'), $('finalsBlock'), $('actionsBlock')]);
 
     // Cast list
     if(ph === 0){
@@ -347,6 +406,10 @@
     el.querySelectorAll('button').forEach(function(b){
       b.addEventListener('click', function(){
         var act = b.getAttribute('data-act');
+        // Decide golden-buzzer feedback from the current view; the transaction updater
+        // below stays pure, so celebrate here once the write resolves instead.
+        var willBuzz = act === 'gold' &&
+          (c.golden||[]).indexOf(me.name) === -1 && !myGoldenUsed();
         mutate(function(s){
           var card = s.cards.find(function(x){ return x.id === c.id; });
           if(!card) return;
@@ -365,8 +428,6 @@
             if(i !== -1){ card.golden.splice(i,1); }
             else if(!s.cards.some(function(x){ return (x.golden||[]).indexOf(me.name) !== -1; })){
               card.golden.push(me.name);
-              confetti();
-              toast('GOLDEN BUZZER! \u201c' + card.text.slice(0,40) + (card.text.length>40?'\u2026':'') + '\u201d goes straight to the finals.');
             }
           }
           if(act === 'top'){
@@ -378,6 +439,12 @@
               },0);
               if(used < TOP_VOTES) card.topVotes.push(me.name);
             }
+          }
+        }).then(function(ok){
+          if(ok && willBuzz){
+            confetti();
+            var t = c.text || '';
+            toast('GOLDEN BUZZER! \u201c' + t.slice(0,40) + (t.length>40?'\u2026':'') + '\u201d goes straight to the finals.');
           }
         });
       });
@@ -415,7 +482,19 @@
     var body = $('actionsBody');
     body.innerHTML = '';
     if(state.actions.length === 0){
-      body.innerHTML = '<tr><td colspan="4" class="empty">No action items yet. The finale awaits.</td></tr>';
+      body.innerHTML = '<tr><td colspan="' + (SPECTATE ? 3 : 4) +
+        '" class="empty">No action items yet. The finale awaits.</td></tr>';
+      return;
+    }
+    if(SPECTATE){
+      state.actions.forEach(function(a){
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + esc(a.text || '—') + '</td>' +
+          '<td>' + esc(a.owner || '—') + '</td>' +
+          '<td>' + esc(a.due || '—') + '</td>';
+        body.appendChild(tr);
+      });
       return;
     }
     state.actions.forEach(function(a){
@@ -450,6 +529,7 @@
     var cat = col.getAttribute('data-cat');
     var input = col.querySelector('.composer input');
     var btn = col.querySelector('.composer button');
+    if(!input || !btn) return; // spectator page has no composers
     function add(){
       var v = input.value.trim();
       if(!v || !me) return;
@@ -465,17 +545,21 @@
   });
 
   // ================= Sprint name (host only) =================
-  $('sprintName').addEventListener('change', function(){
-    var v = this.value;
-    if(!isFac()) return;
-    mutate(function(s){ s.sprintName = v; });
-  });
+  if($('sprintName')){
+    $('sprintName').addEventListener('change', function(){
+      var v = this.value;
+      if(!isFac()) return;
+      mutate(function(s){ s.sprintName = v; });
+    });
+  }
 
   // ================= Actions =================
-  $('addActionBtn').addEventListener('click', function(){
-    if(!me) return;
-    mutate(function(s){ s.actions.push({ id:uid(), text:'', owner:'', due:'' }); });
-  });
+  if($('addActionBtn')){
+    $('addActionBtn').addEventListener('click', function(){
+      if(!me) return;
+      mutate(function(s){ s.actions.push({ id:uid(), text:'', owner:'', due:'' }); });
+    });
+  }
 
   // ================= Phase controls (host page only) =================
   if($('nextBtn')){
@@ -495,11 +579,21 @@
   // ================= Timer (synced via timerEnd) =================
   var disp = $('timerDisplay');
   var timesUpShown = false;
+  function fmtClock(sec){
+    var m = Math.floor(sec/60), s = sec % 60;
+    return m + ':' + String(s).padStart(2,'0');
+  }
+  function timerDurSec(){
+    // duration of the running/last timer, shared via state so every view agrees
+    var d = state.timerDur;
+    if(!d && $('timerSel')) d = parseInt($('timerSel').value, 10) * 60;
+    return d || 60;
+  }
   setInterval(function(){
     var end = state.timerEnd;
-    if(!end){ disp.textContent = '0:60'; timesUpShown = false; return; }
+    if(!end){ disp.textContent = fmtClock(timerDurSec()); timesUpShown = false; return; }
     var left = Math.max(0, Math.ceil((end - Date.now())/1000));
-    disp.textContent = '0:' + String(Math.min(left,60)).padStart(2,'0');
+    disp.textContent = fmtClock(Math.min(left, timerDurSec()));
     if(left === 0 && !timesUpShown){
       timesUpShown = true;
       toast('Time\u2019s up! Judges, cast your votes.');
@@ -507,8 +601,18 @@
   }, 500);
   if($('timerBtn')){
     $('timerBtn').addEventListener('click', function(){
-      mutate(function(s){ s.timerEnd = Date.now() + 60000; });
+      var mins = $('timerSel') ? parseInt($('timerSel').value, 10) || 1 : 1;
+      mutate(function(s){
+        s.timerEnd = Date.now() + mins * 60000;
+        s.timerDur = mins * 60;
+      });
       timesUpShown = false;
+    });
+  }
+  if($('timerSel')){
+    // idle display previews the selection right away
+    $('timerSel').addEventListener('change', function(){
+      if(!state.timerEnd) disp.textContent = fmtClock(parseInt(this.value,10) * 60);
     });
   }
 

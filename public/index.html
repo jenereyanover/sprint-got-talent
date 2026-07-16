@@ -46,9 +46,9 @@
 </div>
 
 <div class="toolbar">
-  <div class="chip">Act timer <strong id="timerDisplay">0:60</strong></div>
+  <div class="chip" id="timerChip">Act timer <strong id="timerDisplay">1:00</strong></div>
   <span class="chip hidden" id="progressChip"></span>
-  <div class="save-note" id="saveNote">Live board &#8212; everyone on this link sees the same show. Syncs every few seconds.</div>
+  <div class="save-note" id="saveNote">Live board &#8212; everyone on this link sees the same show, updated instantly.</div>
 </div>
 
 <!-- Setup: cast list -->
@@ -112,6 +112,6 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script>window.SGT_ROLE = 'part';</script>
-<script src="/app.js"></script>
+<script type="module" src="/app.js"></script>
 </body>
 </html>
