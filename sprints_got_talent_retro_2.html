@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprint's Got Talent — Retro Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --stage:#16121f; --stage-2:#211a30;
+    --velvet:#7a0e1b; --velvet-2:#a31621;
+    --gold:#f2b441; --gold-2:#ffd97a; --spot:#fff3d6;
+    --ink:#f4eee1; --muted:#a99db8;
+    --well:#7bc47f; --flop:#e4707a; --idea:#f5ce62;
+    --card:#241d35; --line:#3a3052; --radius:14px;
+    font-size:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Public Sans',system-ui,-apple-system,Segoe UI,sans-serif;
+    background:
+      radial-gradient(1200px 500px at 50% -150px, rgba(242,180,65,.14), transparent 60%),
+      radial-gradient(700px 400px at 12% 0, rgba(163,22,33,.18), transparent 60%),
+      radial-gradient(700px 400px at 88% 0, rgba(163,22,33,.18), transparent 60%),
+      var(--stage);
+    color:var(--ink); min-height:100vh; padding-bottom:80px;
+  }
+  header{text-align:center;padding:30px 16px 6px;position:relative;overflow:hidden}
+  .curtain{position:absolute;inset:0 auto 0 0;width:70px;
+    background:repeating-linear-gradient(90deg,var(--velvet) 0 14px,var(--velvet-2) 14px 28px);
+    border-right:3px solid rgba(242,180,65,.5);opacity:.85}
+  .curtain.right{left:auto;right:0;border-right:none;border-left:3px solid rgba(242,180,65,.5)}
+  .marquee{display:inline-block;border:3px solid var(--gold);border-radius:18px;
+    padding:12px 28px 9px;position:relative;
+    background:linear-gradient(180deg,#2a2140,#1c1530);
+    box-shadow:0 0 40px rgba(242,180,65,.25), inset 0 0 30px rgba(0,0,0,.5)}
+  .bulbs{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px}
+  .bulbs.bottom{margin:8px 0 0}
+  .bulb{width:8px;height:8px;border-radius:50%;background:var(--gold-2);
+    box-shadow:0 0 8px 2px rgba(255,217,122,.8);animation:twinkle 1.6s infinite}
+  .bulb:nth-child(2n){animation-delay:.8s}
+  .bulb:nth-child(3n){animation-delay:.4s}
+  @keyframes twinkle{0%,100%{opacity:1}50%{opacity:.25;box-shadow:none}}
+  @media (prefers-reduced-motion: reduce){.bulb{animation:none} *{transition:none!important}}
+  h1{font-family:'Alfa Slab One','Georgia',serif;font-weight:400;
+    font-size:clamp(1.4rem,4.5vw,2.6rem);letter-spacing:.04em;color:var(--gold);
+    text-shadow:0 3px 0 #6b4a00, 0 0 26px rgba(242,180,65,.45)}
+  h1 span{color:var(--spot)}
+  .sprint-line{margin-top:10px;color:var(--muted);font-size:.92rem}
+  .sprint-line input{background:transparent;border:none;border-bottom:1px dashed var(--muted);
+    color:var(--ink);font:inherit;text-align:center;width:220px;padding:2px 4px}
+  .sprint-line input:focus{outline:none;border-bottom-color:var(--gold)}
+
+  /* Phase banner */
+  .phase-banner{max-width:1200px;margin:16px auto 0;padding:0 16px}
+  .phase-inner{background:var(--stage-2);border:1px solid #342a4c;border-radius:var(--radius);
+    padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+  .phase-name{font-family:'Alfa Slab One',serif;font-weight:400;color:var(--gold);
+    font-size:1.1rem;letter-spacing:.03em}
+  .phase-hint{color:var(--muted);font-size:.88rem;flex:1;min-width:220px}
+  .phase-dots{display:flex;gap:6px}
+  .pdot{width:10px;height:10px;border-radius:50%;background:#3a3052}
+  .pdot.done{background:var(--gold);opacity:.45}
+  .pdot.now{background:var(--gold-2);box-shadow:0 0 8px rgba(255,217,122,.8)}
+  .you-chip{font-size:.8rem;color:var(--muted);border:1px solid var(--line);
+    border-radius:999px;padding:4px 12px}
+  .you-chip b{color:var(--gold-2)}
+
+  /* Toolbar */
+  .toolbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;
+    padding:14px 16px 0;max-width:1200px;margin:0 auto}
+  .chip{display:flex;align-items:center;gap:8px;background:var(--card);
+    border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:.9rem}
+  .chip strong{font-variant-numeric:tabular-nums;font-size:1.05rem;color:var(--gold-2)}
+  button{font:inherit;cursor:pointer;border:none;border-radius:999px;padding:8px 16px;
+    font-weight:600;transition:transform .12s ease, filter .12s ease}
+  button:hover{filter:brightness(1.1)}
+  button:active{transform:scale(.96)}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  button:disabled{opacity:.4;cursor:not-allowed;filter:none;transform:none}
+  .btn-gold{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#3a2800}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .btn-ghost:hover{color:var(--ink)}
+  .save-note{font-size:.78rem;color:var(--muted);width:100%;text-align:center;margin-top:4px}
+
+  /* Columns */
+  main{max-width:1200px;margin:18px auto 0;padding:0 16px}
+  .columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width:900px){.columns{grid-template-columns:1fr}}
+  .col{background:var(--stage-2);border:1px solid #342a4c;border-radius:var(--radius);
+    padding:14px;border-top:4px solid var(--accent,#888)}
+  .col.well{--accent:var(--well)} .col.flop{--accent:var(--flop)} .col.idea{--accent:var(--idea)}
+  .col h2{font-family:'Alfa Slab One','Georgia',serif;font-weight:400;font-size:1rem;
+    letter-spacing:.03em;color:var(--accent);
+    display:flex;justify-content:space-between;align-items:baseline}
+  .col h2 small{font-family:'Public Sans',sans-serif;font-weight:400;color:var(--muted);
+    font-size:.72rem;letter-spacing:0}
+  .composer{display:flex;gap:8px;margin:12px 0}
+  .composer input{flex:1;background:#181228;border:1px solid var(--line);border-radius:10px;
+    color:var(--ink);font:inherit;padding:9px 12px;min-width:0}
+  .composer input::placeholder{color:#6f6584}
+  .composer input:focus{outline:none;border-color:var(--accent)}
+  .composer button{background:var(--accent);color:#1d1626;padding:8px 14px}
+  .cards{display:flex;flex-direction:column;gap:10px;min-height:40px;margin-top:10px}
+
+  /* Cards */
+  .act{background:var(--card);border:1px solid var(--line);
+    border-left:4px solid var(--accent,#888);border-radius:10px;padding:10px 12px}
+  .act.golden{border:1px solid var(--gold);box-shadow:0 0 14px rgba(242,180,65,.35);
+    background:linear-gradient(180deg,#2e2540,#241d35)}
+  .act.mine{outline:1px dashed rgba(255,217,122,.25);outline-offset:2px}
+  .act .text{font-size:.95rem;line-height:1.4;word-break:break-word}
+  .act .author{font-size:.75rem;color:var(--muted);margin-top:3px}
+  .act .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:9px}
+  .vote{display:inline-flex;align-items:center;gap:5px;background:#181228;
+    border:1px solid var(--line);color:var(--ink);padding:4px 10px;border-radius:999px;
+    font-size:.82rem;font-weight:600}
+  .vote:hover:not(:disabled){border-color:var(--gold)}
+  .vote .n{color:var(--gold-2);font-variant-numeric:tabular-nums}
+  .vote.picked{background:#33294d;border-color:var(--gold-2)}
+  .vote.buzzed{background:linear-gradient(180deg,var(--gold-2),var(--gold));color:#3a2800;border-color:var(--gold)}
+  .del{margin-left:auto;background:transparent;color:#6f6584;padding:2px 8px;font-size:.95rem}
+  .del:hover{color:var(--flop)}
+  .tag-gold{font-size:.7rem;font-weight:700;color:#3a2800;background:var(--gold-2);
+    border-radius:999px;padding:2px 8px;letter-spacing:.05em}
+  .own-note{font-size:.75rem;color:#6f6584;font-style:italic}
+
+  /* Panels */
+  section.stage-block{max-width:1200px;margin:22px auto 0;padding:0 16px}
+  .panel{background:var(--stage-2);border:1px solid #342a4c;border-radius:var(--radius);padding:16px}
+  .panel h2{font-family:'Alfa Slab One','Georgia',serif;font-weight:400;font-size:1.1rem;
+    color:var(--gold);letter-spacing:.03em;margin-bottom:4px}
+  .panel p.hint{color:var(--muted);font-size:.85rem;margin-bottom:12px}
+  .finals-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+  .finalist{background:var(--card);border:1px solid var(--gold);border-radius:10px;
+    padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .finalist .rank{font-family:'Alfa Slab One',serif;color:var(--gold-2);font-size:.82rem}
+  .empty{color:#6f6584;font-size:.9rem;font-style:italic;padding:8px 0}
+  .cast{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .cast .member{background:#181228;border:1px solid var(--line);border-radius:999px;
+    padding:5px 14px;font-size:.85rem}
+  .cast .member.fac{border-color:var(--gold);color:var(--gold-2)}
+
+  .actions-table{width:100%;border-collapse:collapse;font-size:.92rem}
+  .actions-table th{text-align:left;color:var(--muted);font-weight:600;font-size:.76rem;
+    text-transform:uppercase;letter-spacing:.08em;padding:6px 8px;border-bottom:1px solid var(--line)}
+  .actions-table td{padding:8px;border-bottom:1px solid #2b2340;vertical-align:middle}
+  .actions-table input{width:100%;background:#181228;border:1px solid var(--line);
+    border-radius:8px;color:var(--ink);font:inherit;padding:7px 10px}
+  .actions-table input:focus{outline:none;border-color:var(--gold)}
+  .actions-table .del{margin:0}
+  .add-row{margin-top:12px}
+
+  /* Role gate */
+  .gate{position:fixed;inset:0;background:rgba(12,9,20,.9);backdrop-filter:blur(4px);
+    display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
+  .gate-card{background:var(--stage-2);border:2px solid var(--gold);border-radius:18px;
+    padding:28px;max-width:420px;width:100%;text-align:center;
+    box-shadow:0 0 60px rgba(242,180,65,.2)}
+  .gate-card h2{font-family:'Alfa Slab One',serif;font-weight:400;color:var(--gold);
+    font-size:1.3rem;margin-bottom:6px}
+  .gate-card p{color:var(--muted);font-size:.9rem;margin-bottom:18px}
+  .gate-card input{width:100%;background:#181228;border:1px solid var(--line);
+    border-radius:10px;color:var(--ink);font:inherit;padding:11px 14px;text-align:center;
+    margin-bottom:14px}
+  .gate-card input:focus{outline:none;border-color:var(--gold)}
+  .gate-roles{display:flex;gap:10px;justify-content:center}
+  .gate-roles button{flex:1;padding:11px 10px}
+  .gate-err{color:var(--flop);font-size:.82rem;min-height:1.2em;margin-top:10px}
+
+  /* Confetti & toast */
+  .confetti{position:fixed;top:-12px;width:10px;height:16px;border-radius:2px;
+    pointer-events:none;z-index:300;animation:fall linear forwards}
+  @keyframes fall{to{transform:translateY(105vh) rotate(720deg);opacity:.7}}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+    background:var(--card);border:1px solid var(--gold);color:var(--ink);
+    padding:10px 18px;border-radius:999px;font-size:.9rem;z-index:310;
+    box-shadow:0 6px 20px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- Role gate -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <h2>Welcome to the show</h2>
+    <p>Enter your stage name, then pick your role. Performers add the acts, judge, and vote. The host doesn't perform &#8212; they run the show: advancing the acts and keeping the timer.</p>
+    <input type="text" id="gateName" maxlength="24" placeholder="Your name" aria-label="Your name">
+    <div class="gate-roles">
+      <button class="btn-gold" id="joinFacBtn">I'm the host</button>
+      <button class="btn-ghost" id="joinPartBtn">I'm a performer</button>
+    </div>
+    <div class="gate-err" id="gateErr"></div>
+  </div>
+</div>
+
+<header>
+  <div class="curtain" aria-hidden="true"></div>
+  <div class="curtain right" aria-hidden="true"></div>
+  <div class="marquee">
+    <div class="bulbs" aria-hidden="true"></div>
+    <h1>SPRINT'S <span>GOT</span> TALENT</h1>
+    <div class="bulbs bottom" aria-hidden="true"></div>
+  </div>
+  <div class="sprint-line">
+    Tonight's show:
+    <input id="sprintName" type="text" placeholder="Sprint 42 · Jul 2026" aria-label="Sprint name">
+  </div>
+</header>
+
+<div class="phase-banner">
+  <div class="phase-inner">
+    <div class="phase-dots" id="phaseDots" aria-hidden="true"></div>
+    <span class="phase-name" id="phaseName">Setup</span>
+    <span class="phase-hint" id="phaseHint"></span>
+    <span class="you-chip" id="youChip"></span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="chip">Act timer <strong id="timerDisplay">0:60</strong></div>
+  <span id="facControls" class="hidden" style="display:contents">
+    <button class="btn-ghost" id="timerBtn">Start 60s act</button>
+    <button class="btn-ghost" id="prevBtn">&#8592; Back</button>
+    <button class="btn-gold" id="nextBtn">Start the show &#8594;</button>
+    <button class="btn-ghost" id="clearBoardBtn">New season</button>
+  </span>
+  <span class="chip hidden" id="progressChip"></span>
+  <div class="save-note" id="saveNote">Live board — shared with everyone who opens this artifact. Syncs every few seconds.</div>
+</div>
+
+<!-- Setup: cast list -->
+<section class="stage-block" id="castBlock">
+  <div class="panel">
+    <h2>Tonight's cast</h2>
+    <p class="hint">Waiting backstage. When everyone's in, the host starts the show.</p>
+    <div class="cast" id="castList"></div>
+  </div>
+</section>
+
+<main id="boardMain" class="hidden">
+  <div class="columns">
+    <div class="col well" data-cat="well">
+      <h2>Hits <small>what went well</small></h2>
+      <div class="composer">
+        <input type="text" placeholder="Name your act… e.g. The Unstoppable CI Pipeline" aria-label="Add a card to what went well">
+        <button type="button">Add</button>
+      </div>
+      <div class="cards"></div>
+    </div>
+    <div class="col flop" data-cat="flop">
+      <h2>Flops <small>what didn't go well</small></h2>
+      <div class="composer">
+        <input type="text" placeholder="e.g. The Amazing Disappearing Acceptance Criteria" aria-label="Add a card to what didn't go well">
+        <button type="button">Add</button>
+      </div>
+      <div class="cards"></div>
+    </div>
+    <div class="col idea" data-cat="idea">
+      <h2>New acts <small>ideas to try</small></h2>
+      <div class="composer">
+        <input type="text" placeholder="e.g. Pairing Hour: A Duet" aria-label="Add a card to ideas to try">
+        <button type="button">Add</button>
+      </div>
+      <div class="cards"></div>
+    </div>
+  </div>
+</main>
+
+<section class="stage-block hidden" id="finalsBlock">
+  <div class="panel">
+    <h2>The finals</h2>
+    <p class="hint" id="finalsHint">Golden-buzzed acts advance instantly. Top-3 votes decide the rest.</p>
+    <div class="finals-list" id="finalsList"></div>
+  </div>
+</section>
+
+<section class="stage-block hidden" id="actionsBlock">
+  <div class="panel">
+    <h2>Results show — action items</h2>
+    <p class="hint">Turn the finalists into commitments. Every action needs an owner.</p>
+    <table class="actions-table" aria-label="Action items">
+      <thead><tr><th style="width:55%">Action</th><th style="width:22%">Owner</th><th style="width:18%">Due</th><th></th></tr></thead>
+      <tbody id="actionsBody"></tbody>
+    </table>
+    <button class="btn-gold add-row" id="addActionBtn">Add action item</button>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ================= Constants =================
+  var KEY = 'sgt-retro-v2';
+  var ME_KEY = 'sgt-retro-v2-me';
+  var TOP_VOTES = 3;
+  var PHASES = [
+    { name:'Setup',
+      hint:'Performers, sign in from your own device. Host starts the show when the cast is complete.',
+      next:'Start the show \u2192' },
+    { name:'Act 1 \u2014 Auditions',
+      hint:'Performers: add your acts to the three zones \u2014 hits, flops, and new ideas. Stage names encouraged. The host keeps time.',
+      next:'To the judging \u2192' },
+    { name:'Act 2 \u2014 The Judging',
+      hint:'Judge every OTHER performer\u2019s act: \u2b50 yes or \u274c X. You have exactly ONE \ud83d\udd14 golden buzzer \u2014 it sends an act straight to the finals.',
+      next:'To the semifinals \u2192' },
+    { name:'Act 3 \u2014 Semifinals',
+      hint:'Discuss the strongest acts, then cast your \ud83c\udfc6 top-3 votes. The winners headline the finals.',
+      next:'Results show \u2192' },
+    { name:'Act 4 \u2014 Results Show',
+      hint:'The finalists are locked in. Turn them into action items \u2014 every action needs an owner.',
+      next:null }
+  ];
+  var catLabel = { well:'Hit', flop:'Flop', idea:'New act' };
+
+  // ================= State =================
+  function blankState(){
+    return { phase:0, sprintName:'', participants:[], cards:[], actions:[], timerEnd:null };
+  }
+  var state = blankState();
+  var me = null;               // { name, role: 'fac' | 'part' }
+  var memoryOnly = false;
+  var lastSnapshot = '';
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+
+  // ================= Storage =================
+  async function storageGet(key, shared){
+    if(memoryOnly || !window.storage) return null;
+    try{ var r = await window.storage.get(key, shared); return r ? r.value : null; }
+    catch(e){ return null; }
+  }
+  async function storageSet(key, val, shared){
+    if(memoryOnly || !window.storage) return;
+    try{ await window.storage.set(key, val, shared); }catch(e){}
+  }
+
+  // Read latest, apply mutation, write back — reduces clobbering between judges.
+  var writing = false;
+  async function mutate(fn){
+    if(!memoryOnly && window.storage){
+      var latest = await storageGet(KEY, true);
+      if(latest){ try{ state = JSON.parse(latest); }catch(e){} }
+    }
+    fn(state);
+    render();
+    if(memoryOnly || !window.storage) return;
+    writing = true;
+    await storageSet(KEY, JSON.stringify(state), true);
+    writing = false;
+    lastSnapshot = JSON.stringify(state);
+  }
+
+  async function initStorage(){
+    if(!window.storage){ memoryOnly = true; }
+    if(!memoryOnly){
+      var v = await storageGet(KEY, true);
+      if(v){ try{ state = JSON.parse(v); lastSnapshot = v; }catch(e){} }
+      var m = await storageGet(ME_KEY, false);
+      if(m){ try{ me = JSON.parse(m); }catch(e){} }
+    }
+    if(memoryOnly){
+      document.getElementById('saveNote').textContent =
+        'Persistent storage unavailable here \u2014 running in single-device demo mode for this session.';
+    }
+    if(me && !isInCast(me.name)) me = null; // board was reset since last visit
+    if(me) closeGate();
+    render();
+    startPolling();
+  }
+
+  function startPolling(){
+    if(memoryOnly) return;
+    setInterval(async function(){
+      if(writing) return;
+      var v = await storageGet(KEY, true);
+      if(v && v !== lastSnapshot){
+        // Don't yank the rug while someone is typing an action item
+        var ae = document.activeElement;
+        if(ae && ae.tagName === 'INPUT' && ae.closest('#actionsBody')) return;
+        lastSnapshot = v;
+        try{ state = JSON.parse(v); }catch(e){ return; }
+        if(me && !isInCast(me.name)){ me = null; openGate(); }
+        render();
+      }
+    }, 4000);
+  }
+
+  function isInCast(name){
+    return state.participants.some(function(p){ return p.name === name; });
+  }
+
+  // ================= Role gate =================
+  var gate = document.getElementById('gate');
+  function openGate(){ gate.classList.remove('hidden'); }
+  function closeGate(){ gate.classList.add('hidden'); }
+
+  function join(role){
+    var name = document.getElementById('gateName').value.trim();
+    var err = document.getElementById('gateErr');
+    if(!name){ err.textContent = 'The stage needs a name.'; return; }
+    err.textContent = '';
+    mutate(function(s){
+      var existing = s.participants.find(function(p){ return p.name === name; });
+      if(existing){ existing.role = role; }
+      else { s.participants.push({ name:name, role:role }); }
+    }).then(function(){
+      me = { name:name, role:role };
+      storageSet(ME_KEY, JSON.stringify(me), false);
+      closeGate();
+      render();
+      toast(role==='fac' ? 'You\u2019re hosting tonight, ' + name + '.' : 'Break a leg, ' + name + '.');
+    });
+  }
+  document.getElementById('joinFacBtn').addEventListener('click', function(){ join('fac'); });
+  document.getElementById('joinPartBtn').addEventListener('click', function(){ join('part'); });
+  document.getElementById('gateName').addEventListener('keydown', function(e){
+    if(e.key==='Enter') join('part');
+  });
+
+  // ================= Toast & confetti =================
+  var toastEl = document.getElementById('toast'), toastTimer = null;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ toastEl.classList.remove('show'); }, 2800);
+  }
+  function confetti(){
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var colors = ['#f2b441','#ffd97a','#fff3d6','#e4707a','#7bc47f'];
+    for(var i=0;i<70;i++){
+      var p = document.createElement('div');
+      p.className = 'confetti';
+      p.style.left = (Math.random()*100)+'vw';
+      p.style.background = colors[i%colors.length];
+      p.style.animationDuration = (1.6+Math.random()*1.6)+'s';
+      p.style.animationDelay = (Math.random()*0.4)+'s';
+      document.body.appendChild(p);
+      p.addEventListener('animationend', function(){ this.remove(); });
+    }
+  }
+
+  // ================= Derived =================
+  function isFac(){ return me && me.role === 'fac'; }
+  function myGoldenUsed(){
+    return state.cards.some(function(c){ return (c.golden||[]).indexOf(me.name) !== -1; });
+  }
+  function myTopVotesUsed(){
+    return state.cards.reduce(function(n,c){
+      return n + ((c.topVotes||[]).indexOf(me.name) !== -1 ? 1 : 0);
+    }, 0);
+  }
+  function judgeCounts(c){
+    var yes=0, x=0, j=c.judgments||{};
+    Object.keys(j).forEach(function(k){ if(j[k]==='yes') yes++; else if(j[k]==='x') x++; });
+    return { yes:yes, x:x };
+  }
+  function othersCards(){
+    return state.cards.filter(function(c){ return c.author !== me.name; });
+  }
+  function myJudgedCount(){
+    return othersCards().reduce(function(n,c){
+      return n + ((c.judgments||{})[me.name] ? 1 : 0);
+    }, 0);
+  }
+  function finalists(){
+    var golden = state.cards.filter(function(c){ return (c.golden||[]).length > 0; });
+    var rest = state.cards.filter(function(c){ return (c.golden||[]).length === 0; })
+      .map(function(c){
+        var jc = judgeCounts(c);
+        return { c:c, tv:(c.topVotes||[]).length, score:jc.yes - jc.x };
+      })
+      .filter(function(r){ return r.tv > 0; })
+      .sort(function(a,b){ return (b.tv - a.tv) || (b.score - a.score); })
+      .slice(0, 3)
+      .map(function(r){ return r.c; });
+    return { golden:golden, voted:rest };
+  }
+
+  // ================= Rendering =================
+  function render(){
+    var ph = state.phase || 0;
+    var joined = !!me;
+
+    // Sprint name (don't clobber while typing)
+    var sn = document.getElementById('sprintName');
+    if(document.activeElement !== sn) sn.value = state.sprintName || '';
+    sn.disabled = !isFac();
+
+    // Phase banner
+    document.getElementById('phaseName').textContent = PHASES[ph].name;
+    document.getElementById('phaseHint').textContent = PHASES[ph].hint;
+    var dots = document.getElementById('phaseDots');
+    dots.innerHTML = '';
+    PHASES.forEach(function(_,i){
+      var d = document.createElement('span');
+      d.className = 'pdot' + (i<ph?' done':(i===ph?' now':''));
+      dots.appendChild(d);
+    });
+    var yc = document.getElementById('youChip');
+    yc.innerHTML = joined
+      ? (isFac() ? 'Hosting as <b>'+esc(me.name)+'</b>' : 'Performing as <b>'+esc(me.name)+'</b>')
+      : 'Not signed in';
+
+    // Facilitator controls
+    var fc = document.getElementById('facControls');
+    fc.classList.toggle('hidden', !isFac());
+    if(isFac()){
+      var nextBtn = document.getElementById('nextBtn');
+      nextBtn.textContent = PHASES[ph].next || 'Show\u2019s over';
+      nextBtn.disabled = !PHASES[ph].next;
+      document.getElementById('prevBtn').disabled = ph === 0;
+    }
+
+    // Progress chip
+    var pc = document.getElementById('progressChip');
+    if(joined && !isFac() && ph === 2){
+      pc.classList.remove('hidden');
+      pc.innerHTML = 'Judged <strong>' + myJudgedCount() + '/' + othersCards().length +
+        '</strong>&nbsp;\u00b7&nbsp;\ud83d\udd14 ' + (myGoldenUsed() ? 'used' : 'ready');
+    } else if(joined && !isFac() && ph === 3){
+      pc.classList.remove('hidden');
+      pc.innerHTML = '\ud83c\udfc6 votes left <strong>' + (TOP_VOTES - myTopVotesUsed()) + '/' + TOP_VOTES + '</strong>';
+    } else if(joined && isFac() && ph === 2){
+      pc.classList.remove('hidden');
+      var total = 0, done = 0;
+      state.participants.filter(function(p){ return p.role !== 'fac'; }).forEach(function(p){
+        state.cards.forEach(function(c){
+          if(c.author !== p.name){ total++; if((c.judgments||{})[p.name]) done++; }
+        });
+      });
+      pc.innerHTML = 'Judging progress <strong>' + done + '/' + total + '</strong>';
+    } else {
+      pc.classList.add('hidden');
+    }
+
+    // Section visibility
+    document.getElementById('castBlock').classList.toggle('hidden', ph !== 0);
+    document.getElementById('boardMain').classList.toggle('hidden', ph === 0);
+    document.getElementById('finalsBlock').classList.toggle('hidden', ph < 3);
+    document.getElementById('actionsBlock').classList.toggle('hidden', ph !== 4);
+
+    // Cast list
+    if(ph === 0){
+      var cl = document.getElementById('castList');
+      cl.innerHTML = '';
+      if(state.participants.length === 0){
+        cl.innerHTML = '<div class="empty">Nobody backstage yet.</div>';
+      }
+      state.participants.forEach(function(p){
+        var m = document.createElement('span');
+        m.className = 'member' + (p.role==='fac' ? ' fac' : '');
+        m.textContent = (p.role==='fac' ? '\u2605 ' : '') + p.name;
+        cl.appendChild(m);
+      });
+    }
+
+    // Composers only in Act 1, for performers (the host runs the show)
+    document.querySelectorAll('.composer').forEach(function(cp){
+      cp.style.display = (ph === 1 && joined && !isFac()) ? 'flex' : 'none';
+    });
+
+    // Cards
+    ['well','flop','idea'].forEach(function(cat){
+      var wrap = document.querySelector('.col[data-cat="'+cat+'"] .cards');
+      wrap.innerHTML = '';
+      var cs = state.cards.filter(function(c){ return c.cat === cat; });
+      if(ph >= 1 && cs.length === 0){
+        wrap.innerHTML = '<div class="empty">No acts yet.</div>';
+      }
+      cs.forEach(function(c){ wrap.appendChild(cardEl(c, ph, joined)); });
+    });
+
+    renderFinals(ph);
+    renderActions(ph);
+  }
+
+  function cardEl(c, ph, joined){
+    var mine = joined && c.author === me.name;
+    var jc = judgeCounts(c);
+    var goldenCount = (c.golden||[]).length;
+    var el = document.createElement('div');
+    el.className = 'act' + (goldenCount ? ' golden' : '') + (mine ? ' mine' : '');
+
+    var html = '<div class="text">' + esc(c.text) + '</div>' +
+               '<div class="author">by ' + esc(c.author) + (mine ? ' (you)' : '') + '</div>' +
+               '<div class="meta">';
+    if(goldenCount) html += '<span class="tag-gold">GOLDEN BUZZER \u00d7' + goldenCount + '</span>';
+
+    if(ph === 1){
+      if(mine || isFac()){
+        html += '<button class="del" data-act="del" title="Remove card" aria-label="Remove card">&#10005;</button>';
+      }
+    }
+    if(ph === 2 && joined){
+      if(isFac()){
+        html += '<span class="vote" style="cursor:default">\u2b50 <span class="n">'+jc.yes+'</span> \u00b7 \u274c <span class="n">'+jc.x+'</span></span>';
+      } else if(mine){
+        html += '<span class="own-note">Your act \u2014 the judges decide.</span>';
+      } else {
+        var myJ = (c.judgments||{})[me.name];
+        var iBuzzed = (c.golden||[]).indexOf(me.name) !== -1;
+        html += '<button class="vote'+(myJ==='yes'?' picked':'')+'" data-act="yes" title="Yes vote">\u2b50 <span class="n">'+jc.yes+'</span></button>';
+        html += '<button class="vote'+(myJ==='x'?' picked':'')+'" data-act="x" title="X buzzer">\u274c <span class="n">'+jc.x+'</span></button>';
+        html += '<button class="vote'+(iBuzzed?' buzzed':'')+'" data-act="gold" title="Golden buzzer \u2014 one per judge"'+((myGoldenUsed()&&!iBuzzed)?' disabled':'')+'>\ud83d\udd14</button>';
+      }
+    }
+    if(ph === 3 && joined){
+      var iVoted = (c.topVotes||[]).indexOf(me.name) !== -1;
+      html += '<span class="vote" style="cursor:default">\u2b50 <span class="n">'+jc.yes+'</span> \u00b7 \u274c <span class="n">'+jc.x+'</span></span>';
+      if(goldenCount){
+        html += '<span class="own-note">Already in the finals.</span>';
+      } else if(isFac()){
+        html += '<span class="vote" style="cursor:default">\ud83c\udfc6 <span class="n">'+(c.topVotes||[]).length+'</span></span>';
+      } else {
+        var noVotesLeft = myTopVotesUsed() >= TOP_VOTES && !iVoted;
+        html += '<button class="vote'+(iVoted?' picked':'')+'" data-act="top" title="Top-3 vote"'+(noVotesLeft?' disabled':'')+'>\ud83c\udfc6 <span class="n">'+(c.topVotes||[]).length+'</span></button>';
+      }
+    }
+    if(ph === 4){
+      html += '<span class="vote" style="cursor:default">\u2b50 '+jc.yes+' \u00b7 \ud83c\udfc6 '+(c.topVotes||[]).length+'</span>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+
+    el.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){
+        var act = b.getAttribute('data-act');
+        mutate(function(s){
+          var card = s.cards.find(function(x){ return x.id === c.id; });
+          if(!card) return;
+          card.judgments = card.judgments || {};
+          card.golden = card.golden || [];
+          card.topVotes = card.topVotes || [];
+          if(act === 'del'){
+            s.cards = s.cards.filter(function(x){ return x.id !== c.id; });
+          }
+          if(act === 'yes' || act === 'x'){
+            card.judgments[me.name] = (card.judgments[me.name] === act) ? undefined : act;
+            if(!card.judgments[me.name]) delete card.judgments[me.name];
+          }
+          if(act === 'gold'){
+            var i = card.golden.indexOf(me.name);
+            if(i !== -1){ card.golden.splice(i,1); }
+            else if(!s.cards.some(function(x){ return (x.golden||[]).indexOf(me.name) !== -1; })){
+              card.golden.push(me.name);
+              confetti();
+              toast('GOLDEN BUZZER! \u201c' + card.text.slice(0,40) + (card.text.length>40?'\u2026':'') + '\u201d goes straight to the finals.');
+            }
+          }
+          if(act === 'top'){
+            var v = card.topVotes.indexOf(me.name);
+            if(v !== -1){ card.topVotes.splice(v,1); }
+            else {
+              var used = s.cards.reduce(function(n,x){
+                return n + ((x.topVotes||[]).indexOf(me.name) !== -1 ? 1 : 0);
+              },0);
+              if(used < TOP_VOTES) card.topVotes.push(me.name);
+            }
+          }
+        });
+      });
+    });
+    return el;
+  }
+
+  function renderFinals(ph){
+    if(ph < 3) return;
+    var list = document.getElementById('finalsList');
+    document.getElementById('finalsHint').textContent = ph === 3
+      ? 'Live tally \u2014 golden-buzzed acts are locked in, the rest is decided by \ud83c\udfc6 votes.'
+      : 'The finalists. Give each one an action item below.';
+    list.innerHTML = '';
+    var f = finalists();
+    var all = f.golden.concat(f.voted);
+    if(all.length === 0){
+      list.innerHTML = '<div class="empty">No finalists yet \u2014 cast your top-3 votes.</div>';
+      return;
+    }
+    all.forEach(function(c, i){
+      var isGold = (c.golden||[]).length > 0;
+      var d = document.createElement('div');
+      d.className = 'finalist';
+      d.innerHTML =
+        '<span class="rank">' + (isGold ? '\ud83d\udd14 GOLDEN BUZZER' : '#' + (i - f.golden.length + 1) + ' \u00b7 ' + (c.topVotes||[]).length + ' \ud83c\udfc6') + '</span>' +
+        '<div class="text">' + esc(c.text) + '</div>' +
+        '<small style="color:var(--muted)">' + catLabel[c.cat] + ' \u00b7 by ' + esc(c.author) + '</small>';
+      list.appendChild(d);
+    });
+  }
+
+  function renderActions(ph){
+    if(ph !== 4) return;
+    var body = document.getElementById('actionsBody');
+    body.innerHTML = '';
+    if(state.actions.length === 0){
+      body.innerHTML = '<tr><td colspan="4" class="empty">No action items yet. The finale awaits.</td></tr>';
+      return;
+    }
+    state.actions.forEach(function(a){
+      var tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input value="'+esc(a.text)+'" placeholder="What we\u2019ll change" aria-label="Action"></td>' +
+        '<td><input value="'+esc(a.owner)+'" placeholder="Owner" aria-label="Owner"></td>' +
+        '<td><input value="'+esc(a.due)+'" placeholder="Next sprint" aria-label="Due"></td>' +
+        '<td><button class="del" title="Remove action" aria-label="Remove action">&#10005;</button></td>';
+      var inputs = tr.querySelectorAll('input');
+      function saveField(idx, field){
+        inputs[idx].addEventListener('change', function(){
+          var val = this.value;
+          mutate(function(s){
+            var row = s.actions.find(function(x){ return x.id === a.id; });
+            if(row) row[field] = val;
+          });
+        });
+      }
+      saveField(0,'text'); saveField(1,'owner'); saveField(2,'due');
+      tr.querySelector('.del').addEventListener('click', function(){
+        mutate(function(s){
+          s.actions = s.actions.filter(function(x){ return x.id !== a.id; });
+        });
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  // ================= Composers =================
+  document.querySelectorAll('.col').forEach(function(col){
+    var cat = col.getAttribute('data-cat');
+    var input = col.querySelector('.composer input');
+    var btn = col.querySelector('.composer button');
+    function add(){
+      var v = input.value.trim();
+      if(!v || !me) return;
+      input.value = '';
+      mutate(function(s){
+        s.cards.push({ id:uid(), cat:cat, text:v, author:me.name,
+                       judgments:{}, golden:[], topVotes:[] });
+      });
+      input.focus();
+    }
+    btn.addEventListener('click', add);
+    input.addEventListener('keydown', function(e){ if(e.key==='Enter') add(); });
+  });
+
+  // ================= Sprint name (host only) =================
+  document.getElementById('sprintName').addEventListener('change', function(){
+    var v = this.value;
+    if(!isFac()) return;
+    mutate(function(s){ s.sprintName = v; });
+  });
+
+  // ================= Actions =================
+  document.getElementById('addActionBtn').addEventListener('click', function(){
+    if(!me) return;
+    mutate(function(s){ s.actions.push({ id:uid(), text:'', owner:'', due:'' }); });
+  });
+
+  // ================= Phase controls =================
+  document.getElementById('nextBtn').addEventListener('click', function(){
+    mutate(function(s){
+      if(s.phase < PHASES.length - 1) s.phase++;
+      s.timerEnd = null;
+    }).then(function(){
+      if(state.phase === 4) confetti();
+    });
+  });
+  document.getElementById('prevBtn').addEventListener('click', function(){
+    mutate(function(s){ if(s.phase > 0) s.phase--; s.timerEnd = null; });
+  });
+
+  // ================= Timer (synced via timerEnd) =================
+  var disp = document.getElementById('timerDisplay');
+  var timerBtn = document.getElementById('timerBtn');
+  var timesUpShown = false;
+  setInterval(function(){
+    var end = state.timerEnd;
+    if(!end){ disp.textContent = '0:60'; timesUpShown = false; return; }
+    var left = Math.max(0, Math.ceil((end - Date.now())/1000));
+    disp.textContent = '0:' + String(Math.min(left,60)).padStart(2,'0');
+    if(left === 0 && !timesUpShown){
+      timesUpShown = true;
+      toast('Time\u2019s up! Judges, cast your votes.');
+    }
+  }, 500);
+  timerBtn.addEventListener('click', function(){
+    mutate(function(s){ s.timerEnd = Date.now() + 60000; });
+    timesUpShown = false;
+  });
+
+  // ================= New season (clear) =================
+  var clearArmed = false;
+  document.getElementById('clearBoardBtn').addEventListener('click', function(){
+    var self = this;
+    if(!clearArmed){
+      clearArmed = true;
+      self.textContent = 'Really clear everything?';
+      setTimeout(function(){ clearArmed=false; self.textContent='New season'; }, 3500);
+      return;
+    }
+    clearArmed = false;
+    self.textContent = 'New season';
+    mutate(function(s){
+      var fresh = blankState();
+      Object.keys(fresh).forEach(function(k){ s[k] = fresh[k]; });
+    }).then(function(){
+      me = null;
+      storageSet(ME_KEY, '{}', false);
+      openGate();
+      toast('Fresh stage. New season starts now.');
+    });
+  });
+
+  // ================= Marquee bulbs =================
+  document.querySelectorAll('.bulbs').forEach(function(row){
+    for(var i=0;i<14;i++){
+      var b = document.createElement('span');
+      b.className = 'bulb';
+      row.appendChild(b);
+    }
+  });
+
+  initStorage();
+})();
+</script>
+</body>
+</html>
