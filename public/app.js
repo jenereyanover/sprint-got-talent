@@ -94,11 +94,20 @@ import { firebaseConfig } from './firebase-config.js';
   }
 
   // Apply a snapshot pushed live from Firebase.
+  // Only the action-items table is rebuilt by render() (destroying focus), so that's
+  // the one place we defer updates while someone is typing. Composer inputs are static
+  // DOM that render() never touches, so snapshots apply freely there — otherwise a
+  // performer's own new act wouldn't show up (add() refocuses the composer).
+  var pendingRemote = null;
   function handleRemote(val){
     var str = (val == null) ? '' : String(val);
     if(str === lastSnapshot) return;             // no change (also skips the echo of our own write)
-    var ae = document.activeElement;             // don't yank a field out from under someone typing
-    if(ae && ae.tagName === 'INPUT' && (ae.closest('#actionsBody') || ae.closest('.composer'))) return;
+    var ae = document.activeElement;
+    if(ae && ae.tagName === 'INPUT' && ae.closest('#actionsBody')){
+      pendingRemote = str;                       // apply once they leave the field
+      return;
+    }
+    pendingRemote = null;
     lastSnapshot = str;
     if(str){
       try{ state = ensureShape(JSON.parse(str)); }catch(e){ return; }
@@ -116,6 +125,18 @@ import { firebaseConfig } from './firebase-config.js';
     }
     render();
   }
+
+  // Deliver a deferred snapshot once the actions field loses focus. The timeout lets
+  // focus settle first — if it lands in another actions input, handleRemote re-stashes.
+  document.addEventListener('focusout', function(){
+    if(pendingRemote === null) return;
+    setTimeout(function(){
+      if(pendingRemote === null) return;
+      var str = pendingRemote;
+      pendingRemote = null;
+      handleRemote(str);
+    }, 60);
+  });
 
   function init(){
     if(SPECTATE){
